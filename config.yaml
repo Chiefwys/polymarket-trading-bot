@@ -1,0 +1,98 @@
+# ============================================================
+# config.yaml — Strategy & bot settings
+# Edit these values to tune the bot's behavior.
+# Do NOT put secrets here — use .env for API keys.
+# ============================================================
+
+# --- Paper trading portfolio ---
+paper_trading:
+  starting_balance: 1000.00   # Virtual USD balance to start with
+  currency: "USD"
+
+# --- Market data source ---
+market_data:
+  # Polymarket public Gamma API (no key needed for read-only data)
+  base_url: "https://gamma-api.polymarket.com"
+  # How many active markets to fetch per scan.
+  # Increased from 20 to 100 to find more short-term opportunities.
+  markets_limit: 100
+  # Seconds between each full market scan.
+  # Lowered to 20s for faster short-term observation and more trade signals.
+  poll_interval_seconds: 20
+
+# --- Strategy settings ---
+strategy:
+  # Minimum "edge" (difference between our fair-value estimate and the
+  # market price) required before we consider placing a trade.
+  # Minimum SMA-based edge required to place a trade.
+  # Lowered to 0.005 (0.5%) — very permissive for testing.
+  # Raise toward 0.05 when you want to be selective in live-like conditions.
+  min_edge: 0.005
+
+  # Only trade markets where YES price is between these bounds.
+  # This avoids near-certain or near-impossible outcomes.
+  min_price: 0.10
+  max_price: 0.90
+
+  # Simple moving average window (number of price observations) used
+  # to estimate a market's "fair value".
+  # Lowered from 5 to 3 so the SMA reacts faster to recent price moves.
+  # With 20s scans, 3 observations = only 40 seconds of history needed.
+  sma_window: 3
+
+  # --- Short-term momentum settings ---
+  # These settings control how the bot prioritizes fast-moving markets.
+  momentum:
+    # Set to true to enable momentum scoring and category prioritization.
+    enabled: true
+
+    # Minimum absolute price change between the two most recent observations
+    # to count a market as "moving" for priority scoring purposes.
+    # Lowered to 0.005 so more markets qualify as "active" and get priority.
+    min_price_change: 0.005
+
+    # Momentum entry threshold: if a market's price moves at least this much
+    # between two scans, the bot fires a paper trade in that direction
+    # WITHOUT needing an SMA edge. This creates a second signal path that
+    # catches fast-moving markets early and produces more test trades.
+    #
+    # Direction logic:
+    #   price went UP   -> BUY_YES  (ride the upward momentum)
+    #   price went DOWN -> BUY_NO   (bet against the falling YES)
+    #
+    # 0.001 = 0.1% move triggers an entry. Very aggressive — good for testing.
+    # Raise to 0.01 or higher to only trade on meaningful moves.
+    momentum_entry_threshold: 0.001
+
+    # Category priority scores — higher score = evaluated first.
+    # Crypto markets tend to be fastest-moving for short-term trades.
+    # Politics is second (news-driven). Sports third. Everything else last.
+    category_scores:
+      crypto: 3
+      politics: 2
+      sports: 1
+      other: 0
+
+# --- Risk management ---
+risk:
+  # Maximum fraction of portfolio to risk on a single trade (e.g. 0.05 = 5%)
+  max_position_pct: 0.05
+
+  # Hard cap in USD on any single trade regardless of portfolio size
+  max_position_usd: 50.00
+
+  # Stop-loss: close position if it loses more than this fraction of
+  # the entry cost (e.g. 0.20 = 20% loss triggers a stop)
+  stop_loss_pct: 0.20
+
+  # Take-profit: close position if it gains more than this fraction
+  take_profit_pct: 0.40
+
+  # Maximum number of open positions at any one time.
+  # Raised from 5 to 10 so the bot can hold more concurrent paper trades.
+  max_open_positions: 10
+
+# --- Logging ---
+logging:
+  log_file: "logs/trades.log"
+  level: "INFO"   # DEBUG | INFO | WARNING | ERROR
